@@ -17,53 +17,58 @@ chrome_options.add_argument("--disable-popup-blocking")
 
 driver = webdriver.Chrome(chrome_options=chrome_options)
 
+# open the page
 driver.get("https://outagemap.coned.com/external/default.html")
 
+# get the legend Xpath
 imagesInViewPortXPath = '/html/body/div[7]/div[3]/div/div/div[1]/div[3]/div/div[3]'
+# get the address
 addressXPath = '/html/body/div[7]/section[1]/div/div[2]/div[2]/div[2]/span[2]/span[2]'
 
+# wait for 4 seconds until the icons show up --- get the intial stage
 WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, '/html/body/div[7]/div[3]/div/div/div[1]/div[3]/div/div[3]/div[1]/img')))
 
+# return to the intial stage
 restoreElemment = WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, '/html/body/div[7]/ul/li[4]/button/span')))
 
-outrageImages = WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, imagesInViewPortXPath)))
+outageImages = WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, imagesInViewPortXPath)))
 
+# get the HTML structure of icons 
+print(outageImages.get_attribute("innerHTML"))
 
-#for ele in outrageImages:
-    #print(ele.get_attribute('innerHTML'))
-print(outrageImages.get_attribute("innerHTML"))
+#CrawlStatus = {}
+#print(type(outageImages))
 
-CrawlStatus = {}
-
-print(type(outrageImages))
-
-#print(outrageImages[0].get_attribute('innerHTML'))
-
-outrageImages = outrageImages.find_elements_by_tag_name('img');
-print(len(outrageImages))
-for ele in outrageImages:
-    print(ele.get_attribute('src'))
-    #below are extract for each image, but we have flaws:
-    # 1. Cond map is interactive map, the data will change as user action changes, for example, if we continue magnify the elements on the page, other data will removed from the page
-    #so at an edge case, we may not be able to catch all addresses.
-    # 2. the html is pretty complicated, we are working days and nights to do experiments and testing  
+# find the image button to click 
+outageImages = outageImages.find_elements_by_tag_name('img');
+print(len(outageImages))
+for ele in outageImages:
+    print(ele.get_attribute('src')) # print the URL of each image for debug 
     
 
-url = outrageImages[0].get_attribute('src')
+# click the image until the the expected image shows up
+url = outageImages[0].get_attribute('src')
 while 'premise/premises_rep' not in url:
-    outrageImages[0].click()
+    outageImages[0].click()
     zoomEle = WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, '//*[@id="info-box-zoom"]')))
     zoomEle.click()
     time.sleep(3)
-    outrageImages = WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, imagesInViewPortXPath))).find_elements_by_tag_name('img');
-    url = outrageImages[0].get_attribute('src')
-	
+    outageImages = WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, imagesInViewPortXPath))).find_elements_by_tag_name('img');
+    url = outageImages[0].get_attribute('src')
 
 
-
-# show right slide and extract address
-outrageImages[0].click()
+# Extract address
+outageImages[0].click()
 print(WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, addressXPath))).get_attribute('innerHTML'))
+
+
+
+    '''
+    Challenge: The problem complexity will be how to mimic human behavior with selenium to wait the address show up, 
+    I have extracted successfully one address with selenium library. The next step for me is to loop each cluster outage area to extract address.
+    We need to created a hashtable to store the image Xpath from multiple laywers. However, the HTML changes from lawyers to lawyers. 
+    
+    '''
 
 
 #recover to origina page state
@@ -71,32 +76,8 @@ print(WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, a
 #restoreElemment.click()
 
 
-# inputElement.send_keys('New York City')
-# inputElement.send_keys(Keys.ENTER)
-# #driver.find_element_by_id("address_submit").submit()
 
-
-# element_present = EC.presence_of_element_located((By.ID, 'load_more_facilities'))
-# WebDriverWait(driver, 10000).until(element_present)
-
-# #python_button = driver.find_elements_by_id("load_more_facilities")
-# #python_button.click()
-
-# for i in range(10):
-#     driver.execute_script("document.getElementsByClassName('facility_wrapper')[" + str(i) + "].style.display = 'block';")
-    
-# list_of_elements = driver.find_elements_by_css_selector('p.p-b-5')
-
-# print("len is :" + str(len(list_of_elements)))
-# result = []
-# for i in list_of_elements:
-#     if ('NY' in  i.text.strip()):
-#         site={}
-#         site['address'] = i.text.strip()
-#         print(site['address'])
-#         result.append(site)
-
-# f = open('results-final.csv', 'wb')
+# f = open('results-final.csv', 'w')
 
 # with f:
 #     fnames = ['address']
@@ -117,7 +98,5 @@ print(WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, a
 #     time.sleep(4)
 #     #driver.find_element_by_tag_name('body').send_keys(Keys.CONTROL + Keys.HOME)
 #     driver.execute_script("scrollBy(0,250);")
-
-
 
 driver.close()
