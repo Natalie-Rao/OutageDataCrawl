@@ -9,21 +9,28 @@ import time
 import csv
 from pprint import pprint
 from selenium.webdriver.chrome.options import Options
+from datetime import date
 
 chrome_options = Options()
 chrome_options.add_argument("--disable-popup-blocking")
 
 
 
-driver = webdriver.Chrome(chrome_options=chrome_options)
+#driver = webdriver.Chrome(chrome_options=chrome_options)
+driver = webdriver.Firefox()
+actions = ActionChains(driver)
 
 # open the page
 driver.get("https://outagemap.coned.com/external/default.html")
+
 
 # get the legend Xpath
 imagesInViewPortXPath = '/html/body/div[7]/div[3]/div/div/div[1]/div[3]/div/div[3]'
 # get the address
 addressXPath = '/html/body/div[7]/section[1]/div/div[2]/div[2]/div[2]/span[2]/span[2]'
+
+totalOutageNum = WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, '/html/body/div[8]/div/div[1]/div[2]'))).text
+
 
 # wait for 4 seconds until the icons show up --- get the intial stage
 WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, '/html/body/div[7]/div[3]/div/div/div[1]/div[3]/div/div[3]/div[1]/img')))
@@ -33,42 +40,163 @@ restoreElemment = WebDriverWait(driver, 4).until(EC.presence_of_element_located(
 
 outageImages = WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, imagesInViewPortXPath)))
 
+ZoomOutXPath = WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, '/html/body/div[7]/ul/li[1]/button/span')))
+ZoomInXPath = WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, '/html/body/div[7]/ul/li[2]/button/span')))
+
 # get the HTML structure of icons 
-print(outageImages.get_attribute("innerHTML"))
+#print(outageImages.get_attribute("innerHTML"))
 
 #CrawlStatus = {}
 #print(type(outageImages))
+actions.move_by_offset(100, 200).perform()
 
-# find the image button to click 
-outageImages = outageImages.find_elements_by_tag_name('img');
-print(len(outageImages))
-for ele in outageImages:
-    print(ele.get_attribute('src')) # print the URL of each image for debug 
+address = set()
+visited = {}
+
+
+def writeToFile(addressToFile):
+    fileName = date.today().strftime("%b-%d-%Y") + ".csv" 
+    f = open(fileName, 'a+')
+    with f:
+        f.write(addressToFile + "###" + str(time.time()))
+        f.write("\n")
+        f.close()
+
+# find the image button to click
+
+print(totalOutageNum)
+
+
+print(restoreElemment.location)
+
+driver.maximize_window()
+stepX= 300
+stepY= 200
+stepCountX = 30
+
+
+restoreElemment.click()
+# zoomOut to most
+for i in range(0, 8):
+    ZoomOutXPath.click()
+    time.sleep(2)
+
+#move to most left，adjust 1 to find the left boundary 
+for i in range(1):
+    print("move to most left") 
+    ActionChains(driver).move_to_element(ZoomOutXPath).perform()
+    time.sleep(1)
+    ActionChains(driver).move_by_offset(500, 100).perform()
+    time.sleep(1)
+    #driver.get("your.site.with.dragndrop.functionality.com")
+    ActionChains(driver).click_and_hold().move_by_offset(stepX * 1, 0).release().perform() 
+    #actions.move_to_element_with_offset(ZoomOutXPath, stepX * dir[0], stepY* dir[1]).perform()
+    time.sleep(2)
+    print("move back: " ) 
+    ActionChains(driver).move_by_offset((-1) * stepX * 1, 0).perform()
+    time.sleep(2)
+    #actions.click()
+
+#move down to the botton, adjust 1 to find the left boundary 
+for i in range(1):
+    print("move down to most down") 
+    ActionChains(driver).move_to_element(ZoomOutXPath).perform()
+    time.sleep(1)
+    ActionChains(driver).move_by_offset(500, 100).perform()
+    time.sleep(1)
+    #driver.get("your.site.with.dragndrop.functionality.com")
+    ActionChains(driver).click_and_hold().move_by_offset(0, (1) * stepY).release().perform() 
+    #actions.move_to_element_with_offset(ZoomOutXPath, stepX * dir[0], stepY* dir[1]).perform()
+    time.sleep(2)
+    print("move down back: " ) 
+    ActionChains(driver).move_by_offset(0, stepY*(-1)).perform()
+    time.sleep(2)
+
+moveDown = -1 # move up
+moveRight = -1
+while moveDown < 100:
+    start = time.time()
+    for cnt in range(0, stepCountX):
+        newoutageImages = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, imagesInViewPortXPath))).find_elements_by_tag_name('img');
+        print("got all icons : " + str(len(newoutageImages)))
+        fail = 0
+        #if time.time() - start > 10 * 60:
+        #    break;
+        for e in newoutageImages:
+           # if(time.time() - start > 180):
+           #     break;
+            try:
+                url = e.get_attribute('src')
+                print("url: " + url)
+                if 'premise/premisesclusters' in url or 'iconhighlight' in url or 'premise/premises_prob' in url:
+                    e.click()
+                    multipleAddress = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, '//*[@id="info-box-content"]'))).find_elements_by_css_selector('span.premise-holder')
+                    print("we have " + str(len(multipleAddress)) + " addresses")
+                    i = 1;
+                    repeat = 0
+                    while i < len(multipleAddress):
+                        newe = multipleAddress[i].find_element_by_css_selector("span.info-box-field-value")
+                        toAdd = newe.get_attribute('innerHTML')
+                        if toAdd not in address:
+                            print("write to file: " + toAdd )
+                            writeToFile(toAdd)
+                            ZoomOutXPath.click()
+                            ZoomInXPath.click()
+                        else:
+                            repeat = repeat + 1
+                        i = i + 1
+                    time.sleep(1)
+                elif 'premise/premises_rep' in url:
+                    e.click()
+                    toAdd = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, addressXPath))).get_attribute('innerHTML')
+                    print("write to file single address: " + WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, addressXPath))).get_attribute('innerHTML'))
+                    writeToFile(toAdd)
+                    ZoomOutXPath.click()
+                    ZoomInXPath.click()
+                else:
+                    print("new cases, cannot handle")
+            except:
+                print("An exception occurred")
+                fail = fail + 1
+
+
+        # move 
+        for i in range(0, 2):
+            print("move to, moveRight= " + str(moveRight)) 
+            ActionChains(driver).move_to_element(ZoomOutXPath).perform()
+            time.sleep(1)
+            ActionChains(driver).move_by_offset(500, 100).perform()
+            time.sleep(1)
+            #driver.get("your.site.with.dragndrop.functionality.com")
+            ActionChains(driver).click_and_hold().move_by_offset(stepX * moveRight, 0).release().perform() 
+            #actions.move_to_element_with_offset(ZoomOutXPath, stepX * dir[0], stepY* dir[1]).perform()
+            time.sleep(2)
+            print("move back: " ) 
+            ActionChains(driver).move_by_offset((-1) * stepX * moveRight, 0).perform()
+            time.sleep(2)
     
+    #actions.click()
+    #move down
+    print("move up: moveUp=" + str(moveDown)) 
+    ActionChains(driver).move_to_element(ZoomOutXPath).perform()
+    time.sleep(1)
+    ActionChains(driver).move_by_offset(500, 100).perform()
+    time.sleep(1)
+    #driver.get("your.site.with.dragndrop.functionality.com")
+    ActionChains(driver).click_and_hold().move_by_offset(0, stepY).release().perform() 
+    #actions.move_to_element_with_offset(ZoomOutXPath, stepX * dir[0], stepY* dir[1]).perform()
+    time.sleep(2)
+    print("move down back: " ) 
+    ActionChains(driver).move_by_offset(0, (-1) * stepY).perform()
+    time.sleep(2)
 
-# click the image until the the expected image shows up
-url = outageImages[0].get_attribute('src')
-while 'premise/premises_rep' not in url:
-    outageImages[0].click()
-    zoomEle = WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, '//*[@id="info-box-zoom"]')))
-    zoomEle.click()
-    time.sleep(3)
-    outageImages = WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, imagesInViewPortXPath))).find_elements_by_tag_name('img');
-    url = outageImages[0].get_attribute('src')
+    # change move directions:
+    moveRight = -1 * moveRight;
 
 
-# Extract address
-outageImages[0].click()
-print(WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, addressXPath))).get_attribute('innerHTML'))
+print("we got: " + str(len(address)) + " addresses")
 
-
-
-    '''
-    Challenge: The problem complexity will be how to mimic human behavior with selenium to wait the address show up, 
-    I have extracted successfully one address with selenium library. The next step for me is to loop each cluster outage area to extract address.
-    We need to created a hashtable to store the image Xpath from multiple laywers. However, the HTML changes from lawyers to lawyers. 
-    
-    '''
+driver.close()
 
 
 #recover to origina page state
@@ -76,27 +204,3 @@ print(WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, a
 #restoreElemment.click()
 
 
-
-# f = open('results-final.csv', 'w')
-
-# with f:
-#     fnames = ['address']
-#     writer = csv.DictWriter(f, fieldnames=fnames) 
-#     writer.writeheader()
-#     for row in result:
-# 	    writer.writerow(row)
-
-
-# for i in range(3):
-# 	#driver.execute_script("window.scrollTo(0, Math.max(document.body.scrollHeight, document.body.offsetHeight, document.documentElement.clientHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight));")
-#     element = driver.find_element_by_id("load_more_facilities")
-#     driver.execute_script("arguments[0].scrollIntoView();", element)
-#     time.sleep(4)
-#     driver.find_element_by_id("load_more_facilities").click()
-#     print("clicked " + str(i + 1) + " time")
-#     #element.click()
-#     time.sleep(4)
-#     #driver.find_element_by_tag_name('body').send_keys(Keys.CONTROL + Keys.HOME)
-#     driver.execute_script("scrollBy(0,250);")
-
-driver.close()
