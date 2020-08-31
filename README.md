@@ -1,7 +1,7 @@
 # OutageDataCrawl
 ## Description 
 OutageDataCrawl is Python + selenium based crawler which could help to crawl addresses on https://outagemap.coned.com/external/default.html 
-the input is the url(fixed), output is a file which contains addresses grepped from the website，following the examples of the output:
+the input is the url(fixed), output is a file which contains addresses grepped from the website，file name is: current date. csv, following the examples of the output:
 
 * (base) YushuRao:OutageDataCrawl YushuRao$ cat Aug-25-2020.csv 
  *  9627 ATLANTIC AV###1598400447.1718469
@@ -11,6 +11,8 @@ the input is the url(fixed), output is a file which contains addresses grepped f
  *  3406 9 ST###1598401396.014292
 
 the format is "address###timestamp" pattern, timestamp is the time point which we captured the address, so clients we would like to use this data can decide whether to remove the dup or not. 
+
+file name is Aug-25-2020.csv, which is date.csv as demonstated as above. 
 
 ## Install Required dependency
 ### Python related
