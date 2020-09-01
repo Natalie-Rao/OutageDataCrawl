@@ -14,7 +14,7 @@ the format is "address###timestamp" pattern, timestamp is the time point which w
 
 file name is Aug-25-2020.csv, which is date.csv as demonstated as above. 
 
-## Install Required dependency
+## Install Required Dependency
 ### Python related
 1. pip install selenium
 you need to install pip first, take a look at here: https://pip.pypa.io/en/stable/installing/
